@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AWS Sentinel — Weather Anomaly Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><i data-lucide="radar"></i></div>
+      <div><strong>AWS</strong><span>SENTINEL</span></div>
+    </div>
+    <div class="sidebar-label">MONITORING</div>
+    <a class="nav-item active" href="#overview"><i data-lucide="layout-dashboard"></i> Overview</a>
+    <a class="nav-item" href="#input"><i data-lucide="scan-search"></i> Detect</a>
+    <a class="nav-item" href="#analytics"><i data-lucide="activity"></i> Analytics</a>
+    <a class="nav-item" href="#records"><i data-lucide="table-2"></i> Records</a>
+    <div class="sidebar-bottom">
+      <div class="model-pill"><span class="pulse"></span><div><b>MODEL ONLINE</b><small>Isolation Forest · v1</small></div></div>
+      <div class="sidebar-note">Ministry of Earth Sciences<br>Smart India Hackathon · SIH26073</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">AUTOMATIC WEATHER STATION</div>
+        <h1>Weather Anomaly Intelligence</h1>
+        <p>Detect sensor faults and suspicious weather readings before they become operational noise.</p>
+      </div>
+      <div class="top-actions">
+        <span id="apiStatus" class="status-chip"><span></span> Checking model…</span>
+        <button id="demoBtn" class="ghost-btn"><i data-lucide="play"></i> Load Demo</button>
+      </div>
+    </header>
+
+    <section id="overview" class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-icon blue"><i data-lucide="database"></i></div><div><span>Total readings</span><strong id="totalReadings">—</strong><small id="dataSource">Awaiting data</small></div></div>
+      <div class="kpi-card"><div class="kpi-icon red"><i data-lucide="triangle-alert"></i></div><div><span>Anomalies detected</span><strong id="anomalies">—</strong><small id="anomalyRate">— anomaly rate</small></div></div>
+      <div class="kpi-card"><div class="kpi-icon green"><i data-lucide="shield-check"></i></div><div><span>Normal readings</span><strong id="normalReadings">—</strong><small>within learned pattern</small></div></div>
+      <div class="kpi-card"><div class="kpi-icon violet"><i data-lucide="gauge"></i></div><div><span>Decision threshold</span><strong id="threshold">—</strong><small>lower score = more anomalous</small></div></div>
+    </section>
+
+    <section id="input" class="work-grid">
+      <div class="panel manual-panel">
+        <div class="panel-head"><div><span class="section-tag">01 / MANUAL READING</span><h2>Inspect a station reading</h2></div><span class="mini-badge">12 FEATURES</span></div>
+        <form id="manualForm">
+          <div class="form-grid">
+            <label>Station / City<input id="city" value="Mumbai"></label>
+            <label>Time<input id="time" type="datetime-local"></label>
+            <label>Temperature (°C)<input id="temperature_2m" type="number" step="any" value="29"></label>
+            <label>Relative humidity (%)<input id="relative_humidity_2m" type="number" step="any" value="72"></label>
+            <label>Precipitation (mm)<input id="precipitation" type="number" step="any" value="0"></label>
+            <label>Surface pressure (hPa)<input id="surface_pressure" type="number" step="any" value="1012"></label>
+            <label>Wind speed (km/h)<input id="wind_speed_10m" type="number" step="any" value="14"></label>
+            <label>Wind direction (°)<input id="wind_direction_10m" type="number" step="any" value="180"></label>
+          </div>
+          <details class="advanced"><summary><i data-lucide="sliders-horizontal"></i> Optional change-from-previous values</summary>
+            <div class="form-grid">
+              <label>Temperature Δ<input id="temperature_2m_change" type="number" step="any" value="0.2"></label>
+              <label>Humidity Δ<input id="relative_humidity_2m_change" type="number" step="any" value="-1"></label>
+              <label>Precipitation Δ<input id="precipitation_change" type="number" step="any" value="0"></label>
+              <label>Pressure Δ<input id="surface_pressure_change" type="number" step="any" value="-0.3"></label>
+              <label>Wind speed Δ<input id="wind_speed_10m_change" type="number" step="any" value="1"></label>
+              <label>Wind direction Δ<input id="wind_direction_10m_change" type="number" step="any" value="2"></label>
+            </div>
+          </details>
+          <div class="form-actions"><button class="primary-btn" type="submit"><i data-lucide="scan-line"></i> Detect anomaly</button><button id="clearManualFieldsBtn" class="ghost-btn action-btn" type="button"><i data-lucide="rotate-ccw"></i> Clear fields</button><button id="clearManualResultBtn" class="ghost-btn action-btn hidden" type="button"><i data-lucide="eraser"></i> Clear detection</button></div>
+        </form>
+        <div id="manualResult" class="manual-result hidden"></div>
+      </div>
+
+      <div class="panel upload-panel">
+        <div class="panel-head"><div><span class="section-tag">02 / BATCH ANALYSIS</span><h2>Upload station data</h2></div><span class="mini-badge">CSV / EXCEL</span></div>
+        <div id="dropZone" class="drop-zone">
+          <div class="upload-icon"><i data-lucide="upload-cloud"></i></div>
+          <h3>Drop your dataset here</h3>
+          <p>or choose a file from your computer</p>
+          <label class="file-btn">Choose file<input id="fileInput" type="file" accept=".csv,.xlsx,.xls"></label>
+          <small>Required: time, city, temperature, humidity, precipitation, pressure, wind speed & direction</small>
+        </div>
+        <div id="fileMeta" class="file-meta hidden"></div>
+        <div class="file-actions"><button id="detectFileBtn" class="primary-btn wide" disabled><i data-lucide="radar"></i> Detect anomalies in file</button><button id="clearFileBtn" class="ghost-btn action-btn" type="button"><i data-lucide="x"></i> Clear file</button></div>
+        <div class="upload-hint"><i data-lucide="info"></i><span>The backend reproduces the model's change-based features for each city and applies the saved scaler + optimized threshold.</span></div><button id="clearBatchBtn" class="ghost-btn batch-clear-btn hidden" type="button"><i data-lucide="eraser"></i> Clear batch results</button>
+      </div>
+    </section>
+
+    <section id="manualAnalytics" class="manual-analytics hidden">
+      <div class="section-divider"><span class="section-tag">LIVE READING MODE</span><span class="divider-line"></span><span id="manualSessionLabel">Awaiting manual reading</span></div>
+      <div class="live-grid">
+        <div class="panel live-verdict-panel">
+          <div class="panel-head"><div><span class="section-tag">LIVE DIAGNOSTIC</span><h2>Current reading assessment</h2></div><span id="liveSeverityBadge" class="mini-badge">—</span></div>
+          <div class="live-verdict">
+            <div id="liveStatusIcon" class="live-status-icon"><i data-lucide="scan-search"></i></div>
+            <div><strong id="liveStatusText">—</strong><span id="liveStatusMeta">Run a manual reading to inspect the model output.</span></div>
+          </div>
+          <div class="live-metrics">
+            <div><span>Anomaly score</span><strong id="liveScore">—</strong></div>
+            <div><span>Threshold</span><strong id="liveThreshold">—</strong></div>
+            <div><span>Deviation</span><strong id="liveDeviation">—</strong></div>
+          </div>
+        </div>
+        <div class="panel chart-panel">
+          <div class="panel-head"><div><span class="section-tag">MODEL SIGNAL</span><h2>Live score vs threshold</h2></div></div>
+          <div class="chart-wrap compact"><canvas id="manualScoreChart"></canvas></div>
+        </div>
+        <div class="panel chart-panel">
+          <div class="panel-head"><div><span class="section-tag">TEMPORAL CONTEXT</span><h2>Manual session scores</h2></div></div>
+          <div class="chart-wrap compact"><canvas id="manualHistoryChart"></canvas></div>
+        </div>
+        <div class="panel chart-panel wide-chart">
+          <div class="panel-head"><div><span class="section-tag">CHANGE FEATURES</span><h2>Change-from-previous profile</h2></div><span class="mini-badge">6 DELTAS</span></div>
+          <div class="chart-wrap"><canvas id="manualDeltaChart"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="analytics" class="dashboard-grid hidden">
+      <div class="panel chart-panel wide-chart">
+        <div class="panel-head"><div><span id="batchSourceTag" class="section-tag">BATCH ANALYSIS</span><h2>Anomaly activity over time</h2></div><div class="legend"><span class="dot anomaly"></span>Anomalies <span class="dot normal"></span>Readings</div></div>
+        <div class="chart-wrap"><canvas id="timelineChart"></canvas></div>
+      </div>
+      <div class="panel chart-panel">
+        <div class="panel-head"><div><span class="section-tag">DISTRIBUTION</span><h2>Detection mix</h2></div></div>
+        <div class="donut-wrap"><canvas id="statusChart"></canvas><div class="donut-center"><strong id="donutPct">—</strong><span>anomaly rate</span></div></div>
+      </div>
+      <div class="panel chart-panel">
+        <div class="panel-head"><div><span class="section-tag">SEVERITY</span><h2>Alert levels</h2></div></div>
+        <div class="chart-wrap compact"><canvas id="severityChart"></canvas></div>
+      </div>
+      <div class="panel chart-panel wide-chart">
+        <div class="panel-head"><div><span class="section-tag">STATION NETWORK</span><h2>Anomalies by city</h2></div></div>
+        <div class="chart-wrap"><canvas id="cityChart"></canvas></div>
+      </div>
+      <div class="panel chart-panel">
+        <div class="panel-head"><div><span class="section-tag">MODEL SIGNAL</span><h2>Anomaly score landscape</h2></div></div>
+        <div class="chart-wrap compact"><canvas id="scoreChart"></canvas></div>
+      </div>
+      <div class="panel sensor-panel">
+        <div class="panel-head"><div><span class="section-tag">SENSOR TELEMETRY</span><h2>Observed ranges</h2></div></div>
+        <div id="sensorStats" class="sensor-list"></div>
+      </div>
+    </section>
+
+    <section id="records" class="panel records-panel hidden">
+      <div class="panel-head">
+        <div><span id="recordSourceTag" class="section-tag">03 / EVENT LOG</span><h2>Detected records</h2><p id="recordSubtitle">Run a detection to populate the event stream.</p></div>
+        <button id="downloadBtn" class="ghost-btn" disabled><i data-lucide="download"></i> Download full results</button>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Time</th><th>City</th><th>Temp</th><th>Humidity</th><th>Pressure</th><th>Wind</th><th>Score</th><th>Status</th><th>Severity</th></tr></thead>
+        <tbody id="recordsBody"><tr><td colspan="9" class="empty">No analysis yet. Load the demo or upload a dataset.</td></tr></tbody></table>
+      </div>
+    </section>
+
+    <footer>AI/ML-Based Intelligent Anomaly Detection for Automatic Weather Stations · SIH26073 · Prototype dashboard</footer>
+  </main>
+</div>
+<div id="toast" class="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
