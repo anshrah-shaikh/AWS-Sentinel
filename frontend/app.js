@@ -1,3 +1,10 @@
+// AWS Sentinel backend URL.
+// Leave blank when frontend and backend share the same origin.
+// For GitHub Pages, set this to your Vercel backend URL, for example:
+// window.AWS_SENTINEL_API = "https://your-backend.vercel.app";
+const API_BASE=(window.AWS_SENTINEL_API||"").replace(/\\/$/,"");
+const api=path=>`${API_BASE}${path}`;
+
 const $=id=>document.getElementById(id);
 let charts={}, currentRunId=null, selectedFile=null, manualHistory=[], batchSource=null;
 
@@ -177,7 +184,7 @@ function showManualAnalytics(d){
 async function loadDemo(){
   $("demoBtn").disabled=true;
   $("demoBtn").innerHTML=`<i data-lucide="loader-circle"></i> Loading…`;lucide.createIcons();
-  try{const r=await fetch("/api/demo");const d=await r.json();if(!r.ok)throw new Error(d.error);batchSource="demo";render(d);showToast("Demo weather data analyzed successfully.");}
+  try{const r=await fetch(api("/api/demo"));const d=await r.json();if(!r.ok)throw new Error(d.error);batchSource="demo";render(d);showToast("Demo weather data analyzed successfully.");}
   catch(e){showToast(e.message)}
   $("demoBtn").disabled=false;$("demoBtn").innerHTML=`<i data-lucide="play"></i> Load Demo`;lucide.createIcons();
 }
@@ -189,7 +196,7 @@ async function manualSubmit(e){
  $("records").classList.add("hidden");
  const fields=["temperature_2m","relative_humidity_2m","precipitation","surface_pressure","wind_speed_10m","wind_direction_10m","temperature_2m_change","relative_humidity_2m_change","precipitation_change","surface_pressure_change","wind_speed_10m_change","wind_direction_10m_change"];
  const body={city:$("city").value,time:$("time").value};fields.forEach(k=>body[k]=Number($(k).value));
- try{const r=await fetch("/api/detect/manual",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw new Error(d.error);
+ try{const r=await fetch(api("/api/detect/manual"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw new Error(d.error);
   const box=$("manualResult");box.className=`manual-result ${d.status==="ANOMALY"?"anomaly":"normal"}`;
   $("clearManualResultBtn").classList.remove("hidden");box.innerHTML=`<div class="result-line"><strong>${d.status==="ANOMALY"?"⚠ ANOMALY":"✓ NORMAL"} · ${d.severity}</strong><span class="badge ${d.status.toLowerCase()}">${d.anomaly_score.toFixed(4)}</span></div><div class="result-meta">Decision threshold: ${d.threshold.toFixed(4)} · Lower scores indicate greater deviation from the learned weather pattern.</div>`;
   manualHistory.push({score:Number(d.anomaly_score),status:d.status});
@@ -203,7 +210,7 @@ async function fileDetect(){
  if(!selectedFile)return;
  const fd=new FormData();fd.append("file",selectedFile);
  $("detectFileBtn").disabled=true;$("detectFileBtn").innerHTML=`<i data-lucide="loader-circle"></i> Analyzing dataset…`;lucide.createIcons();
- try{const r=await fetch("/api/detect/file",{method:"POST",body:fd});const d=await r.json();if(!r.ok)throw new Error(d.error);batchSource="file";render(d);showToast(`${fmt(d.valid_rows)} rows analyzed from ${d.filename}.`);document.querySelector("#analytics").scrollIntoView({behavior:"smooth"});}
+ try{const r=await fetch(api("/api/detect/file"),{method:"POST",body:fd});const d=await r.json();if(!r.ok)throw new Error(d.error);batchSource="file";render(d);showToast(`${fmt(d.valid_rows)} rows analyzed from ${d.filename}.`);document.querySelector("#analytics").scrollIntoView({behavior:"smooth"});}
  catch(err){showToast(err.message)}
  $("detectFileBtn").disabled=false;$("detectFileBtn").innerHTML=`<i data-lucide="radar"></i> Detect anomalies in file`;lucide.createIcons();
 }
@@ -229,7 +236,7 @@ $("clearManualFieldsBtn").addEventListener("click",()=>{setManualDefaults();show
 $("clearManualResultBtn").addEventListener("click",()=>{manualHistory=[];$("manualResult").className="manual-result hidden";$("manualResult").innerHTML="";$("clearManualResultBtn").classList.add("hidden");hideManualView(false);showToast("Manual detection cleared.");});
 $("clearFileBtn").addEventListener("click",()=>{updateSelectedFile(null);$("fileInput").value="";showToast("Selected file cleared.");});
 $("clearBatchBtn").addEventListener("click",()=>{clearBatchView();showToast("Batch analysis cleared.");});
-$("downloadBtn").addEventListener("click",()=>{if(currentRunId)window.location=`/api/results/${currentRunId}/download`});
+$("downloadBtn").addEventListener("click",()=>{if(currentRunId)window.location=api(`/api/results/${currentRunId}/download`)});
 const dz=$("dropZone");
 ["dragenter","dragover"].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add("drag")}));
 ["dragleave","drop"].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove("drag")}));
@@ -238,5 +245,5 @@ setManualDefaults();
 hideBatchView();
 hideManualView();
 resetKpis();
-async function health(){try{const r=await fetch("/api/health");const d=await r.json();if(d.ok){$("apiStatus").className="status-chip online";$("apiStatus").innerHTML="<span></span> Model online"}}catch(e){$("apiStatus").innerHTML="<span></span> Backend offline"}}
+async function health(){try{const r=await fetch(api("/api/health"));const d=await r.json();if(d.ok){$("apiStatus").className="status-chip online";$("apiStatus").innerHTML="<span></span> Model online"}}catch(e){$("apiStatus").innerHTML="<span></span> Backend offline"}}
 lucide.createIcons();health();

@@ -12,7 +12,11 @@ import traceback
 BASE_DIR = Path(__file__).resolve().parent
 MODEL_DIR = BASE_DIR / "models"
 FRONTEND_DIR = BASE_DIR.parent / "frontend"
-SAMPLE_FILE = BASE_DIR.parent / "sample_data" / "aws_weather_data.csv"
+# On Vercel, the backend folder is the deployment root, so the demo CSV
+# must be available inside backend/sample_data. The fallback keeps the
+# original local project structure working too.
+SAMPLE_FILE = BASE_DIR / "sample_data" / "aws_weather_data.csv"
+LEGACY_SAMPLE_FILE = BASE_DIR.parent / "sample_data" / "aws_weather_data.csv"
 
 MODEL = joblib.load(MODEL_DIR / "weather_anomaly_model.pkl")
 SCALER = joblib.load(MODEL_DIR / "weather_anomaly_scaler.pkl")
@@ -258,7 +262,10 @@ def detect_file():
 @app.get("/api/demo")
 def demo():
     try:
-        df = pd.read_csv(SAMPLE_FILE)
+        demo_file = SAMPLE_FILE if SAMPLE_FILE.exists() else LEGACY_SAMPLE_FILE
+        if not demo_file.exists():
+            raise FileNotFoundError("Demo dataset not found. Add sample_data/aws_weather_data.csv inside the backend folder.")
+        df = pd.read_csv(demo_file)
         # Use a representative recent slice, preserving city time order.
         df["time"] = pd.to_datetime(df["time"], errors="coerce")
         df = df.sort_values(["city", "time"])
@@ -295,13 +302,25 @@ def download_results(run_id):
 
 @app.get("/")
 def index():
-    return send_from_directory(FRONTEND_DIR, "index.html")
+    # Locally, keep serving the dashboard as before.
+    # On Vercel (backend-only deployment), return a small API status response.
+    index_file = FRONTEND_DIR / "index.html"
+    if index_file.exists():
+        return send_from_directory(FRONTEND_DIR, "index.html")
+    return jsonify({
+        "service": "AWS Sentinel API",
+        "status": "online",
+        "message": "Backend is running. The dashboard is hosted separately."
+    })
 
 @app.errorhandler(404)
 def not_found(e):
     if request.path.startswith("/api/"):
         return jsonify({"error": "API route not found"}), 404
-    return send_from_directory(FRONTEND_DIR, "index.html")
+    index_file = FRONTEND_DIR / "index.html"
+    if index_file.exists():
+        return send_from_directory(FRONTEND_DIR, "index.html")
+    return jsonify({"error": "Route not found"}), 404
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

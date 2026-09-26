@@ -1,0 +1,30 @@
+AWS SENTINEL — DEPLOYMENT NOTES
+
+Recommended setup:
+1. Backend: Vercel
+2. Frontend: GitHub Pages
+
+BACKEND — VERCEL
+- In Vercel, import the AWS-Sentinel GitHub repository.
+- Set Root Directory to: backend
+- Keep Framework Preset as: Other
+- Deploy.
+- Vercel should detect backend/app.py automatically as the Flask entry point.
+- The backend demo CSV is already included at backend/sample_data/aws_weather_data.csv.
+- Copy the Vercel deployment URL.
+
+FRONTEND — GITHUB PAGES
+- Open frontend/config.js.
+- Change:
+    window.AWS_SENTINEL_API = "";
+  to:
+    window.AWS_SENTINEL_API = "https://YOUR-BACKEND.vercel.app";
+- Commit/push the frontend files to GitHub.
+- Enable GitHub Pages for the repository and use the folder containing frontend as the published site.
+- Open the GitHub Pages URL and test the "Load Demo" button.
+
+IMPORTANT
+- Do not upload .venv.
+- The saved model was trained/saved with scikit-learn 1.6.1, so requirements.txt pins that version.
+- Local use still works with: python backend/app.py
+- If the Vercel URL changes later, only frontend/config.js needs to be updated.
